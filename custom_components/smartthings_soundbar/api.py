@@ -1,5 +1,8 @@
 import requests
 import json
+import logging
+_LOGGER = logging.getLogger(__name__)
+
 from homeassistant.const import (
     STATE_IDLE,
     STATE_OFF,
@@ -21,6 +24,7 @@ COMMAND_REWIND = "{'commands':[{'component': 'main','capability': 'mediaPlayback
 COMMAND_FAST_FORWARD = "{'commands':[{'component': 'main','capability': 'mediaPlayback','command': 'fastForward'}]}"
 
 CONTROLLABLE_SOURCES = ["bluetooth", "wifi"]
+CONTROLLABLE_SOUND_MODES = ["bluetooth", "wifi"]
 
 
 class SoundbarApi:
@@ -42,6 +46,10 @@ class SoundbarApi:
         playback_state = data['main']['playbackStatus']['value']
         device_source = data['main']['inputSource']['value']
         device_all_sources = json.loads(data['main']['supportedInputSources']['value'])
+        _LOGGER.debug("NANODEBUG PRINT DATA")
+        _LOGGER.debug(data)
+        device_sound_mode = "nanosoundmode"
+        device_all_sound_modes = {"sm1","sm2"}
         device_muted = data['main']['mute']['value'] != "unmuted"
 
         if switch_state == "on":
@@ -58,8 +66,10 @@ class SoundbarApi:
             self._state = STATE_OFF
         self._volume = device_volume
         self._source_list = device_all_sources["value"]
+        self._sound_mode_list = device_all_sound_modes["value"]
         self._muted = device_muted
         self._source = device_source
+        self._sound_mode = device_sound_mode
         if self._state in [STATE_PLAYING, STATE_PAUSED]:
             self._media_title = data['main']['trackDescription']['value']
         else:
@@ -104,5 +114,7 @@ class SoundbarApi:
             API_COMMAND_DATA = "{'commands':[{'component': 'main','capability': 'mediaInputSource','command': 'setInputSource', 'arguments': "
             API_COMMAND_ARG = "['{}']}}]}}".format(argument)
             API_FULL = API_COMMAND_DATA + API_COMMAND_ARG
+            cmdurl = requests.post(API_COMMAND, data=API_FULL, headers=REQUEST_HEADERS)
+        elif cmdtype == "selectsoundmode":  # changes sound_mode
             cmdurl = requests.post(API_COMMAND, data=API_FULL, headers=REQUEST_HEADERS)
         self.async_schedule_update_ha_state()
